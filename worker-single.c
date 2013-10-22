@@ -45,8 +45,8 @@ while(divergence || (step<STEP_MAX)){
 	step++;
 	for (j=1; j<PARTITION_HEIGHT-1; j++){
 		for (i=1; i<PARTITION_WIDTH-1; i++){
-			temp=0.25*element_final[j-1][i]*element_final[j][i-1]*\
-				element_final[j+1][i]*element_final[j][i+1];
+			temp=0.25*(element_final[j-1][i]+element_final[j][i-1]+\
+				element_final[j+1][i]+element_final[j][i+1];
 			if (fabs(temp-element_final[j][i])>ERROR_MARGIN) divergence=1;
 			}
 		}
