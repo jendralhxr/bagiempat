@@ -196,8 +196,8 @@ while(divergence_final || (step<STEP_MAX)){
 	for (j=j_min; j<=j_max; j++){
 		for (i=i_min; i<=i_max; i++){
 			element_local_new[j][i] = 0.25 *\
-				element_local_old[j-1][i]*element_local_old[j+1][i]*\
-				element_local_old[j][i-1]*element_local_old[j][i+1];
+				(element_local_old[j-1][i]+element_local_old[j+1][i]+\
+				element_local_old[j][i-1]+element_local_old[j][i+1]);
 				if (fabs(element_local_old[j][i]-element_local_new[j][i])>ERROR_MARGIN) divergence_local=1;
 			}
 		}
