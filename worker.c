@@ -239,12 +239,12 @@ if (node_rank==0){
 	printf("bagiempat: finish = %d.%d\n",stop_time.tv_sec,stop_time.tv_usec);
 	printf("bagiempat: elapsed = %f sec\n",stop_time.tv_sec-start_time.tv_sec+\
 		(double)(stop_time.tv_usec-start_time.tv_usec)/1000000);
-	for(j=0; j<PARTITION_HEIGHT*NUM_HEIGHT; j++){
-		for(i=0; i<PARTITION_WIDTH*NUM_WIDTH; i++){
-			printf("%.6f;",element_final[j][i]);
-			}
-		printf("\n");
-		}	
+	//~ for(j=0; j<PARTITION_HEIGHT*NUM_HEIGHT; j++){
+		//~ for(i=0; i<PARTITION_WIDTH*NUM_WIDTH; i++){
+			//~ printf("%.12f;",element_final[j][i]);
+			//~ }
+		//~ printf("\n");
+		//~ }	
 	}
 
 MPI_Finalize();
