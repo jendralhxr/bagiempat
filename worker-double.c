@@ -23,6 +23,7 @@ char node_name[MPI_MAX_PROCESSOR_NAME];
 struct timeval start_time, stop_time;
 int i, j, k;
 MPI_Status status;
+MPI_Request req_send, req_recv;
 
 int main(int argc, char *argv[]){
 	buffer_recv = malloc(sizeof(double)*(PARTITION_WIDTH+1));
@@ -68,21 +69,19 @@ while(divergence_final && (step<STEP_MAX)){
 		for (j=0; j<PARTITION_HEIGHT; j++){
 			if (node_rank==0){
 				// left section
-				if (k==0) memcpy(element_local[j],element_final[j],sizeof(double)*(PARTITION_WIDTH+1));
+				if (k==0) memcpy(buffer_send,element_final[j],sizeof(double)*(PARTITION_WIDTH+1));
 				// right section
-				if (k==1){
-					memcpy(buffer_send,&(element_final[j][PARTITION_WIDTH-1]),sizeof(double)*(PARTITION_WIDTH+1));
-					MPI_Send(buffer_send,PARTITION_WIDTH+1,MPI_DOUBLE,k,0,MPI_COMM_WORLD);
-					}
+				if (k==1) memcpy(buffer_send,&(element_final[j][PARTITION_WIDTH-1]),sizeof(double)*(PARTITION_WIDTH+1));
+				MPI_Isend(buffer_send,PARTITION_WIDTH+1,MPI_DOUBLE,k,0,MPI_COMM_WORLD,&req_send);
 				}
-			else if (node_rank==1){
-				// this following line is buggy				
-				MPI_Recv(buffer_recv,PARTITION_WIDTH+1,MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+			if (node_rank==k){
+				MPI_Irecv(buffer_recv,PARTITION_WIDTH+1,MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&req_recv);
 				memcpy(element_local[j],buffer_recv,sizeof(double)*(PARTITION_WIDTH+1));
 				}
 			}
 		}
-			
+	
+										
 	// computing element_local: 4-way mean for elements within each partition
 	// divergence check
 	divergence_local=0;
@@ -91,6 +90,7 @@ while(divergence_final && (step<STEP_MAX)){
 			temp = 0.25*(element_local[j-1][i]+element_local[j+1][i]+\
 						 element_local[j][i-1]+element_local[j][i+1]);
 				if (fabs(element_local[j][i]-temp)>ERROR_MARGIN){
+					
 					divergence_local=1;
 					element_local[j][i]=temp;
 					}
@@ -106,18 +106,15 @@ while(divergence_final && (step<STEP_MAX)){
 	for (k=0; k<node_count; k++){
 		for (j=1; j<PARTITION_HEIGHT-1; j++){
 			// send
-			if (node_rank==0) memcpy(element_final[j],element_local[j],sizeof(double)*PARTITION_WIDTH);
-			if (node_rank==1) {
-				memcpy(buffer_send,&(element_local[j][1]),sizeof(double)*PARTITION_WIDTH);
-				MPI_Send(buffer_send,PARTITION_WIDTH,MPI_DOUBLE,0,0,MPI_COMM_WORLD);
+			if (node_rank==k){
+				if (node_rank==0) memcpy(buffer_send,element_local[j],sizeof(double)*PARTITION_WIDTH);
+				if (node_rank==1) memcpy(buffer_send,&(element_local[j][1]),sizeof(double)*PARTITION_WIDTH);
+				MPI_Isend(buffer_send,PARTITION_WIDTH,MPI_DOUBLE,0,0,MPI_COMM_WORLD,&req_send);
 				}
 			// recv
 			if (node_rank==0){
-				// this line (k==0) just doesn't work--dunno why
-				// if (k==0) MPI_Recv(buffer_recv,PARTITION_WIDTH,MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-				if (k==1) MPI_Recv(buffer_recv,PARTITION_WIDTH,MPI_DOUBLE,1,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-				//MPI_Recv(buffer_recv2,PARTITION_WIDTH,MPI_DOUBLE,k,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-				memcpy(&(element_final[j][PARTITION_WIDTH]),buffer_recv,sizeof(double)*PARTITION_WIDTH);
+				MPI_Irecv(buffer_recv,PARTITION_WIDTH,MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&req_recv);
+				memcpy(&(element_final[j][k*PARTITION_WIDTH]),buffer_recv,sizeof(double)*PARTITION_WIDTH);
 				}	
 			}
 		}
