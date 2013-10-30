@@ -71,11 +71,11 @@ while(divergence_final && (step<STEP_MAX)){
 				// left section
 				if (k==0) memcpy(buffer_send,element_final[j],sizeof(double)*(PARTITION_WIDTH+1));
 				// right section
-				if (k==1) memcpy(buffer_send,&(element_final[j][PARTITION_WIDTH-1]),sizeof(double)*(PARTITION_WIDTH+1));
-				MPI_Isend(buffer_send,PARTITION_WIDTH+1,MPI_DOUBLE,k,0,MPI_COMM_WORLD,&req_send);
+				else if (k==1) memcpy(buffer_send,&(element_final[j][PARTITION_WIDTH-1]),sizeof(double)*(PARTITION_WIDTH+1));
+				MPI_Send(buffer_send,PARTITION_WIDTH+1,MPI_DOUBLE,k,1,MPI_COMM_WORLD);
 				}
 			if (node_rank==k){
-				MPI_Irecv(buffer_recv,PARTITION_WIDTH+1,MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&req_recv);
+				MPI_Recv(buffer_recv,PARTITION_WIDTH+1,MPI_DOUBLE,0,1,MPI_COMM_WORLD,&status);
 				memcpy(element_local[j],buffer_recv,sizeof(double)*(PARTITION_WIDTH+1));
 				}
 			}
@@ -96,7 +96,7 @@ while(divergence_final && (step<STEP_MAX)){
 					}
 			}
 		}
-		
+	
 	// summing divergence values
 	for (k=0; k<node_count; k++){
 		MPI_Reduce(&divergence_local,&divergence_final,1,MPI_UNSIGNED,MPI_SUM,k,MPI_COMM_WORLD);
@@ -108,12 +108,12 @@ while(divergence_final && (step<STEP_MAX)){
 			// send
 			if (node_rank==k){
 				if (node_rank==0) memcpy(buffer_send,element_local[j],sizeof(double)*PARTITION_WIDTH);
-				if (node_rank==1) memcpy(buffer_send,&(element_local[j][1]),sizeof(double)*PARTITION_WIDTH);
-				MPI_Isend(buffer_send,PARTITION_WIDTH,MPI_DOUBLE,0,0,MPI_COMM_WORLD,&req_send);
+				else if (node_rank==1) memcpy(buffer_send,&(element_local[j][1]),sizeof(double)*PARTITION_WIDTH);
+				MPI_Send(buffer_send,PARTITION_WIDTH,MPI_DOUBLE,0,2,MPI_COMM_WORLD);
 				}
 			// recv
 			if (node_rank==0){
-				MPI_Irecv(buffer_recv,PARTITION_WIDTH,MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&req_recv);
+				MPI_Recv(buffer_recv,PARTITION_WIDTH,MPI_DOUBLE,k,2,MPI_COMM_WORLD,&status);
 				memcpy(&(element_final[j][k*PARTITION_WIDTH]),buffer_recv,sizeof(double)*PARTITION_WIDTH);
 				}	
 			}
@@ -127,7 +127,14 @@ if (node_rank==0){
 	printf("bagiempat: finish = %d.%d\n",stop_time.tv_sec,stop_time.tv_usec);
 	printf("bagiempat: elapsed = %f sec\n",stop_time.tv_sec-start_time.tv_sec+\
 		(double)(stop_time.tv_usec-start_time.tv_usec)/1000000);
+	for (j=0; j<PARTITION_HEIGHT; j++){
+		for (i=0; i<PARTITION_WIDTH*2; i++){
+			printf("%f\t",element_final[j][i]);
+			}
+			printf("\n");
+		}
 	}
+
 	
 MPI_Finalize();
 return(0);
