@@ -15,7 +15,7 @@
 #define BOUNDARY_TOP 30
 #define BOUNDARY_BOTTOM 200
 #define ERROR_MARGIN 1e-9
-#define STEP_MAX 20
+#define STEP_MAX 1e6
 
 double **element_local, **element_final, temp; // the whole array, kept at node_rank==0
 double *buffer_recv, *buffer_send; // line buffer
@@ -61,12 +61,10 @@ if (!node_rank){
 	printf("bagiempat: start = %d.%d\n",start_time.tv_sec,start_time.tv_usec);
 	}
 
-system("sleep 10");
 // do the actual work here
 while(divergence_final && (step<STEP_MAX)){
 	step++;
 	divergence_final=0;
-	if (node_rank==0) printf("step %d\n",step);
 	// assigment to element_local from master node
 	for (k=0; k<node_count; k++){
 		for (j=0; j<PARTITION_HEIGHT+2; j++){
@@ -136,13 +134,11 @@ while(divergence_final && (step<STEP_MAX)){
 						buffer_send[i]=element_final[PARTITION_HEIGHT*(k/NUM_HEIGHT)+j-1][PARTITION_WIDTH*(k%NUM_WIDTH)+i-1];
 						}
 					}
-				MPI_Send(buffer_send,PARTITION_WIDTH+2,MPI_DOUBLE,k,0,MPI_COMM_WORLD);
+				MPI_Send(buffer_send,PARTITION_WIDTH+2,MPI_DOUBLE,k,1,MPI_COMM_WORLD);
 				}
 			if (node_rank==k){
-				// debug these 2 lines			
-				//MPI_Recv(buffer_recv,PARTITION_WIDTH+2,MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+				MPI_Recv(buffer_recv,PARTITION_WIDTH+2,MPI_DOUBLE,0,1,MPI_COMM_WORLD,&status);
 				memcpy(element_local[j],buffer_recv,sizeof(double)*(PARTITION_WIDTH+2));
-				printf("node %d recv line %d\n",k,j);
 				}
 			}
 		}	
@@ -184,6 +180,7 @@ while(divergence_final && (step<STEP_MAX)){
 		i_min=2; i_max=PARTITION_WIDTH;
 		}
 	// right edges
+
 	else if (node_rank%NUM_WIDTH==NUM_WIDTH-1){
 		j_min=1; j_max=PARTITION_HEIGHT;
 		i_min=1; i_max=PARTITION_WIDTH-1;
@@ -194,7 +191,6 @@ while(divergence_final && (step<STEP_MAX)){
 		i_min=1; i_max=PARTITION_WIDTH;
 		}
 
-	printf("node %d start calc\n",node_rank);
 	// computing element_local: 4-way mean for elements within each partition
 	// divergence check
 	divergence_local=0;
@@ -209,43 +205,43 @@ while(divergence_final && (step<STEP_MAX)){
 			}
 		}
 		
-	//~ printf("node %d divergence %d\n",node_rank,divergence_local);
 	// summing divergence values
 	for (k=0; k<node_count; k++){
 		MPI_Reduce(&divergence_local,&divergence_final,1,MPI_UNSIGNED,MPI_SUM,k,MPI_COMM_WORLD);
 		}
 	
-	system("sleep 20");
-	//~ printf("node %d update\n",node_rank);
 	// update to element_final
 	for (k=0; k<node_count; k++){
 		for (j=1; j<=PARTITION_HEIGHT; j++){
 			// send
 			if (node_rank==k){
 				memcpy(buffer_send,&(element_local[j][1]),sizeof(double)*PARTITION_WIDTH);
-				MPI_Send(buffer_send,PARTITION_WIDTH,MPI_DOUBLE,0,0,MPI_COMM_WORLD);
-				printf("node %d update line %d\n",node_rank,j);
+				MPI_Send(buffer_send,PARTITION_WIDTH,MPI_DOUBLE,0,3,MPI_COMM_WORLD);
 				}
-			// recv
+			// recv -- not quite sure here
 			if (node_rank==0){
-				MPI_Recv(buffer_recv,PARTITION_WIDTH,MPI_DOUBLE,k,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-				// debug this following line
-//				memcpy(&(element_final[0][0]),buffer_recv,sizeof(double)*PARTITION_WIDTH);
-				memcpy(&(element_final[k/NUM_HEIGHT*PARTITION_HEIGHT+j][k%NUM_WIDTH*PARTITION_WIDTH]),\
+				MPI_Recv(buffer_recv,PARTITION_WIDTH,MPI_DOUBLE,k,3,MPI_COMM_WORLD,&status);
+				// this need some serious revamp
+				memcpy(&(element_final[k/NUM_WIDTH*PARTITION_HEIGHT+j-1][(k%NUM_WIDTH)*PARTITION_WIDTH]),\
 					buffer_recv,sizeof(double)*PARTITION_WIDTH);
-				printf("master recv from %d line %d\n",k,j);
 				}	
 			}
 		}
 	}
 
-//~ if (node_rank==0) printf("selesai");	
 // finish, outputs
 if (node_rank==0){
 	gettimeofday(&stop_time,NULL);
+	printf("bagiempat: step = %d\n",step);
 	printf("bagiempat: finish = %d.%d\n",stop_time.tv_sec,stop_time.tv_usec);
 	printf("bagiempat: elapsed = %f sec\n",stop_time.tv_sec-start_time.tv_sec+\
 		(double)(stop_time.tv_usec-start_time.tv_usec)/1000000);
+		//~ for (j=0; j<PARTITION_HEIGHT; j++){
+		//~ for (i=0; i<PARTITION_WIDTH*2; i++){
+			//~ printf("%f\t",element_final[j][i]);
+			//~ }
+			//~ printf("\n");
+		//~ }
 	}
 
 MPI_Finalize();

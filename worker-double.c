@@ -13,7 +13,7 @@
 #define BOUNDARY_TOP 30
 #define BOUNDARY_BOTTOM 200
 #define ERROR_MARGIN 1e-9
-#define STEP_MAX 20
+#define STEP_MAX 1e6
 
 double **element_local, **element_final, temp; // the whole array, kept at node_rank==0
 double *buffer_recv, *buffer_send; // line buffer
@@ -23,7 +23,6 @@ char node_name[MPI_MAX_PROCESSOR_NAME];
 struct timeval start_time, stop_time;
 int i, j, k;
 MPI_Status status;
-MPI_Request req_send, req_recv;
 
 int main(int argc, char *argv[]){
 	buffer_recv = malloc(sizeof(double)*(PARTITION_WIDTH+1));
@@ -127,12 +126,12 @@ if (node_rank==0){
 	printf("bagiempat: finish = %d.%d\n",stop_time.tv_sec,stop_time.tv_usec);
 	printf("bagiempat: elapsed = %f sec\n",stop_time.tv_sec-start_time.tv_sec+\
 		(double)(stop_time.tv_usec-start_time.tv_usec)/1000000);
-	for (j=0; j<PARTITION_HEIGHT; j++){
-		for (i=0; i<PARTITION_WIDTH*2; i++){
-			printf("%f\t",element_final[j][i]);
-			}
-			printf("\n");
-		}
+	//~ for (j=0; j<PARTITION_HEIGHT; j++){
+		//~ for (i=0; i<PARTITION_WIDTH*2; i++){
+			//~ printf("%f\t",element_final[j][i]);
+			//~ }
+			//~ printf("\n");
+		//~ }
 	}
 
 	
