@@ -134,10 +134,10 @@ while(divergence_final && (step<STEP_MAX)){
 						buffer_send[i]=element_final[PARTITION_HEIGHT*(k/NUM_HEIGHT)+j-1][PARTITION_WIDTH*(k%NUM_WIDTH)+i-1];
 						}
 					}
-				MPI_Send(buffer_send,PARTITION_WIDTH+2,MPI_DOUBLE,k,1,MPI_COMM_WORLD);
+				MPI_ISend(buffer_send,PARTITION_WIDTH+2,MPI_DOUBLE,k,1,MPI_COMM_WORLD);
 				}
 			if (node_rank==k){
-				MPI_Recv(buffer_recv,PARTITION_WIDTH+2,MPI_DOUBLE,0,1,MPI_COMM_WORLD,&status);
+				MPI_IRecv(buffer_recv,PARTITION_WIDTH+2,MPI_DOUBLE,0,1,MPI_COMM_WORLD,&status);
 				memcpy(element_local[j],buffer_recv,sizeof(double)*(PARTITION_WIDTH+2));
 				}
 			}
