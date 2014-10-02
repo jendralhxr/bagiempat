@@ -23,6 +23,8 @@ unsigned int step=0, divergence_local=1, divergence_final=1;
 int node_count, node_rank, node_namelen;
 char node_name[MPI_MAX_PROCESSOR_NAME];
 struct timeval start_time, stop_time;
+struct timeval process_start_time, process_stop_time;
+double total_processing_time; // sec
 int i, j, k, i_min, i_max, j_min, j_max;
 MPI_Status status;
 
@@ -134,10 +136,10 @@ while(divergence_final && (step<STEP_MAX)){
 						buffer_send[i]=element_final[PARTITION_HEIGHT*(k/NUM_HEIGHT)+j-1][PARTITION_WIDTH*(k%NUM_WIDTH)+i-1];
 						}
 					}
-				MPI_ISend(buffer_send,PARTITION_WIDTH+2,MPI_DOUBLE,k,1,MPI_COMM_WORLD);
+				MPI_Send(buffer_send,PARTITION_WIDTH+2,MPI_DOUBLE,k,1,MPI_COMM_WORLD);
 				}
 			if (node_rank==k){
-				MPI_IRecv(buffer_recv,PARTITION_WIDTH+2,MPI_DOUBLE,0,1,MPI_COMM_WORLD,&status);
+				MPI_Recv(buffer_recv,PARTITION_WIDTH+2,MPI_DOUBLE,0,1,MPI_COMM_WORLD,&status);
 				memcpy(element_local[j],buffer_recv,sizeof(double)*(PARTITION_WIDTH+2));
 				}
 			}
@@ -180,7 +182,6 @@ while(divergence_final && (step<STEP_MAX)){
 		i_min=2; i_max=PARTITION_WIDTH;
 		}
 	// right edges
-
 	else if (node_rank%NUM_WIDTH==NUM_WIDTH-1){
 		j_min=1; j_max=PARTITION_HEIGHT;
 		i_min=1; i_max=PARTITION_WIDTH-1;
@@ -193,6 +194,7 @@ while(divergence_final && (step<STEP_MAX)){
 
 	// computing element_local: 4-way mean for elements within each partition
 	// divergence check
+	gettimeofday(&process_start_time,NULL);	
 	divergence_local=0;
 	for (j=j_min; j<=j_max; j++){
 		for (i=i_min; i<=i_max; i++){
@@ -204,7 +206,10 @@ while(divergence_final && (step<STEP_MAX)){
 					}
 			}
 		}
-		
+	gettimeofday(&process_stop_time,NULL);	
+	total_processing_time += (process_stop_time.tv_sec-process_start_time.tv_sec+\
+		(double)(process_stop_time.tv_usec-process_start_time.tv_usec)/1000000);
+	
 	// summing divergence values
 	for (k=0; k<node_count; k++){
 		MPI_Reduce(&divergence_local,&divergence_final,1,MPI_UNSIGNED,MPI_SUM,k,MPI_COMM_WORLD);
@@ -230,12 +235,15 @@ while(divergence_final && (step<STEP_MAX)){
 	}
 
 // finish, outputs
+printf("bagiempat: node[%d]: computing time= %.6f sec\n",node_rank,total_processing_time);
+
 if (node_rank==0){
 	gettimeofday(&stop_time,NULL);
-	printf("bagiempat: step = %d\n",step);
-	printf("bagiempat: finish = %d.%d\n",stop_time.tv_sec,stop_time.tv_usec);
-	printf("bagiempat: elapsed = %f sec\n",stop_time.tv_sec-start_time.tv_sec+\
+	printf("bagiempat: total steps= %d\n",step);
+	//printf("bagiempat: finish= %d.%d\n",stop_time.tv_sec,stop_time.tv_usec);
+	printf("bagiempat: elapsed= %.6f sec\n",stop_time.tv_sec-start_time.tv_sec+\
 		(double)(stop_time.tv_usec-start_time.tv_usec)/1000000);
+		
 		//~ for (j=0; j<PARTITION_HEIGHT; j++){
 		//~ for (i=0; i<PARTITION_WIDTH*2; i++){
 			//~ printf("%f\t",element_final[j][i]);
