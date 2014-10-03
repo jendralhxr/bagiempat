@@ -135,6 +135,6 @@ if (node_rank==0){
 	}
 
 	
-MPI_globalize();
+MPI_Finalize();
 return(0);
 }
