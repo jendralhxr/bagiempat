@@ -21,8 +21,6 @@ unsigned int step=0, divergence_local=1, divergence_global=1;
 int node_count, node_rank, node_namelen;
 char node_name[MPI_MAX_PROCESSOR_NAME];
 struct timeval start_time, stop_time;
-struct timeval process_start_time, process_stop_time;
-double total_processing_time; // sec
 int i, j, k;
 MPI_Status status;
 
@@ -58,7 +56,7 @@ int main(int argc, char *argv[]){
 // start 
 if (!node_rank){
 	gettimeofday(&start_time,NULL);
-	//printf("bagiempat: start = %d.%d\n",start_time.tv_sec,start_time.tv_usec);
+	printf("bagiempat: start = %d.%d\n",start_time.tv_sec,start_time.tv_usec);
 	}
 
 // do the actual work here
@@ -85,7 +83,6 @@ while(divergence_global && (step<STEP_MAX)){
 										
 	// computing element_local: 4-way mean for elements within each partition
 	// divergence check
-	gettimeofday(&process_start_time,NULL);	
 	divergence_local=0;
 	for (j=1; j<PARTITION_HEIGHT-1; j++){
 		for (i=1; i<PARTITION_WIDTH; i++){
@@ -98,9 +95,6 @@ while(divergence_global && (step<STEP_MAX)){
 					}
 			}
 		}
-	gettimeofday(&process_stop_time,NULL);
-	total_processing_time += (process_stop_time.tv_sec-process_start_time.tv_sec+\
-		(double)(process_stop_time.tv_usec-process_start_time.tv_usec)/1000000);
 	
 	// summing divergence values
 	for (k=0; k<node_count; k++){
@@ -126,15 +120,12 @@ while(divergence_global && (step<STEP_MAX)){
 	}
 
 // finish, outputs
-printf("bagiempat: node[%d]: computing time= %.6f sec\n",node_rank,total_processing_time);
-
 if (node_rank==0){
 	gettimeofday(&stop_time,NULL);
-	printf("bagiempat: total steps= %d\n",step);
-	//printf("bagiempat: finish = %d.%d\n",stop_time.tv_sec,stop_time.tv_usec);
-	printf("bagiempat: elapsed= %.6f sec\n",stop_time.tv_sec-start_time.tv_sec+\
+	printf("bagiempat: step = %d\n",step);
+	printf("bagiempat: finish = %d.%d\n",stop_time.tv_sec,stop_time.tv_usec);
+	printf("bagiempat: elapsed = %f sec\n",stop_time.tv_sec-start_time.tv_sec+\
 		(double)(stop_time.tv_usec-start_time.tv_usec)/1000000);
-	
 	//~ for (j=0; j<PARTITION_HEIGHT; j++){
 		//~ for (i=0; i<PARTITION_WIDTH*2; i++){
 			//~ printf("%f\t",element_global[j][i]);

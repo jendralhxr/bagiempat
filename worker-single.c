@@ -37,7 +37,7 @@ int main(int argc, char *argv[]){
 		}
 	
 	gettimeofday(&start_time,NULL);
-	//printf("bagiempat-single: start = %d.%d\n",start_time.tv_sec,start_time.tv_usec);
+	printf("bagiempat-single: start = %d.%d\n",start_time.tv_sec,start_time.tv_usec);
 	
 // do the actual work here
 while(divergence && (step<STEP_MAX)){
@@ -57,16 +57,15 @@ while(divergence && (step<STEP_MAX)){
 
 // finish, outputs
 	gettimeofday(&stop_time,NULL);
-	//printf("bagiempat: finish = %d.%d\n",stop_time.tv_sec,stop_time.tv_usec);
-	printf("bagiempat (single): elapsed= %.6f sec\n",stop_time.tv_sec-start_time.tv_sec+\
+	printf("bagiempat: finish = %d.%d\n",stop_time.tv_sec,stop_time.tv_usec);
+	printf("bagiempat: elapsed = %f sec\n",stop_time.tv_sec-start_time.tv_sec+\
 		(double)(stop_time.tv_usec-start_time.tv_usec)/1000000);
-	
-	//~ for(j=0; j<PARTITION_HEIGHT; j++){
-		//~ for(i=0; i<PARTITION_WIDTH; i++){
-			//~ printf("%.6f;",element_final[j][i]);
-			//~ }
-		//~ printf("\n");
-		//~ }	
+	for(j=0; j<PARTITION_HEIGHT; j++){
+		for(i=0; i<PARTITION_WIDTH; i++){
+			printf("%.6f;",element_final[j][i]);
+			}
+		printf("\n");
+		}	
 	
 
 return(0);
