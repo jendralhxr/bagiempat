@@ -17,9 +17,9 @@
 #define ERROR_MARGIN 1e-9
 #define STEP_MAX 1e6
 
-double **element_local, **element_final, temp; // the whole array, kept at node_rank==0
+double **element_local, **element_global, temp; // the whole array, kept at node_rank==0
 double *buffer_recv, *buffer_send; // line buffer
-unsigned int step=0, divergence_local=1, divergence_final=1;
+unsigned int step=0, divergence_local=1, divergence_global=1;
 int node_count, node_rank, node_namelen;
 char node_name[MPI_MAX_PROCESSOR_NAME];
 struct timeval start_time, stop_time;
@@ -37,19 +37,19 @@ int main(int argc, char *argv[]){
 		element_local[i] = malloc(sizeof(double)*(PARTITION_WIDTH+2));
 		}
 	
-	element_final = malloc(sizeof(double*)*PARTITION_HEIGHT*NUM_HEIGHT);
+	element_global = malloc(sizeof(double*)*PARTITION_HEIGHT*NUM_HEIGHT);
 	for (i=0; i<PARTITION_HEIGHT*NUM_HEIGHT; i++){
-		element_final[i] = malloc(sizeof(double)*PARTITION_WIDTH*NUM_WIDTH);
+		element_global[i] = malloc(sizeof(double)*PARTITION_WIDTH*NUM_WIDTH);
 		}
 	
 	// assigning boundary values
 	for (i=0; i<PARTITION_HEIGHT*NUM_HEIGHT; i++){
-		element_final[i][0] = BOUNDARY_LEFT;
-		element_final[i][PARTITION_WIDTH*NUM_WIDTH-1] = BOUNDARY_RIGHT;
+		element_global[i][0] = BOUNDARY_LEFT;
+		element_global[i][PARTITION_WIDTH*NUM_WIDTH-1] = BOUNDARY_RIGHT;
 		}
 	for (i=0; i<PARTITION_WIDTH*NUM_WIDTH; i++){
-		element_final[0][i] = BOUNDARY_TOP;
-		element_final[PARTITION_HEIGHT*NUM_HEIGHT-1][i] = BOUNDARY_BOTTOM;
+		element_global[0][i] = BOUNDARY_TOP;
+		element_global[PARTITION_HEIGHT*NUM_HEIGHT-1][i] = BOUNDARY_BOTTOM;
 		}
 	
 	MPI_Init(&argc, &argv);
@@ -60,13 +60,13 @@ int main(int argc, char *argv[]){
 // start 
 if (!node_rank){
 	gettimeofday(&start_time,NULL);
-	printf("bagiempat: start = %d.%d\n",start_time.tv_sec,start_time.tv_usec);
+	//printf("bagiempat: start = %d.%d\n",start_time.tv_sec,start_time.tv_usec);
 	}
 
 // do the actual work here
-while(divergence_final && (step<STEP_MAX)){
+while(divergence_global && (step<STEP_MAX)){
 	step++;
-	divergence_final=0;
+	divergence_global=0;
 	// assigment to element_local from master node
 	for (k=0; k<node_count; k++){
 		for (j=0; j<PARTITION_HEIGHT+2; j++){
@@ -75,21 +75,21 @@ while(divergence_final && (step<STEP_MAX)){
 				if (k==0){
 					for (i=0; i<PARTITION_WIDTH+2; i++){
 						if ((j==0) || (i==0)) buffer_send[i]=0.0;
-						else buffer_send[i]=element_final[j-1][i-1];
+						else buffer_send[i]=element_global[j-1][i-1];
 						}
 					}
 				// top-right corner
 				else if (k==NUM_WIDTH-1){
 					for (i=0; i<PARTITION_WIDTH+2; i++){
 						if ((j==0) || (i==PARTITION_WIDTH+1)) buffer_send[i]=0.0;
-						else buffer_send[i]=element_final[j-1][PARTITION_WIDTH*(NUM_WIDTH-1)+i-1];
+						else buffer_send[i]=element_global[j-1][PARTITION_WIDTH*(NUM_WIDTH-1)+i-1];
 						}
 					}
 				// bottom-left corner
 				else if (k==NUM_HEIGHT*NUM_WIDTH-NUM_WIDTH){
 					for (i=0; i<PARTITION_WIDTH+2; i++){
 						if ((j==PARTITION_HEIGHT+1) || (i==0)) buffer_send[i]=0.0;
-						else buffer_send[i]=element_final[PARTITION_HEIGHT*(NUM_HEIGHT-1)+j-1][i-1];
+						else buffer_send[i]=element_global[PARTITION_HEIGHT*(NUM_HEIGHT-1)+j-1][i-1];
 						}
 					}
 				// bottom-right corner
@@ -97,14 +97,14 @@ while(divergence_final && (step<STEP_MAX)){
 					for (i=0; i<PARTITION_WIDTH+2; i++){
 						if ((j==PARTITION_HEIGHT+1) || (i==PARTITION_WIDTH+1)) buffer_send[i]=0.0;
 						else buffer_send[i]=\
-							element_final[PARTITION_HEIGHT*(NUM_HEIGHT-1)+j-1][PARTITION_WIDTH*(NUM_WIDTH-1)+i-1];
+							element_global[PARTITION_HEIGHT*(NUM_HEIGHT-1)+j-1][PARTITION_WIDTH*(NUM_WIDTH-1)+i-1];
 						}
 					}
 				// top edges
 				else if (k<NUM_WIDTH){
 					for (i=0; i<PARTITION_WIDTH+2; i++){
 						if (j==0) buffer_send[i]=0.0;
-						else buffer_send[i]=element_final[j-1][PARTITION_WIDTH*k+i-1];
+						else buffer_send[i]=element_global[j-1][PARTITION_WIDTH*k+i-1];
 						}
 					}
 				// bottom edges
@@ -112,14 +112,14 @@ while(divergence_final && (step<STEP_MAX)){
 					for (i=0; i<PARTITION_WIDTH+2; i++){
 						if (j==PARTITION_HEIGHT+1) buffer_send[i]=0.0;
 						else buffer_send[i]=\
-							element_final[PARTITION_HEIGHT*(NUM_HEIGHT-1)+j-1][PARTITION_WIDTH*(k%NUM_WIDTH)+i-1];
+							element_global[PARTITION_HEIGHT*(NUM_HEIGHT-1)+j-1][PARTITION_WIDTH*(k%NUM_WIDTH)+i-1];
 						}
 					}
 				// left edges
 				else if (k%NUM_WIDTH==0){
 					for (i=0; i<PARTITION_WIDTH+2; i++){
 						if (i==0) buffer_send[i]=0.0;
-						else buffer_send[i]=element_final[PARTITION_HEIGHT*(k/NUM_HEIGHT)+j-1][i-1];
+						else buffer_send[i]=element_global[PARTITION_HEIGHT*(k/NUM_HEIGHT)+j-1][i-1];
 						}
 					}
 				// right edges
@@ -127,13 +127,13 @@ while(divergence_final && (step<STEP_MAX)){
 					for (i=0; i<PARTITION_WIDTH+2; i++){
 						if (i==PARTITION_WIDTH+1) buffer_send[i]=0.0;
 						else buffer_send[i]=\
-							element_final[PARTITION_HEIGHT*(k/NUM_HEIGHT)+j-1][PARTITION_WIDTH*(NUM_WIDTH-1)+i-1];
+							element_global[PARTITION_HEIGHT*(k/NUM_HEIGHT)+j-1][PARTITION_WIDTH*(NUM_WIDTH-1)+i-1];
 						}
 					}
 				// middle partitions
 				else{
 					for (i=0; i<PARTITION_WIDTH+2; i++){
-						buffer_send[i]=element_final[PARTITION_HEIGHT*(k/NUM_HEIGHT)+j-1][PARTITION_WIDTH*(k%NUM_WIDTH)+i-1];
+						buffer_send[i]=element_global[PARTITION_HEIGHT*(k/NUM_HEIGHT)+j-1][PARTITION_WIDTH*(k%NUM_WIDTH)+i-1];
 						}
 					}
 				MPI_Send(buffer_send,PARTITION_WIDTH+2,MPI_DOUBLE,k,1,MPI_COMM_WORLD);
@@ -212,10 +212,10 @@ while(divergence_final && (step<STEP_MAX)){
 	
 	// summing divergence values
 	for (k=0; k<node_count; k++){
-		MPI_Reduce(&divergence_local,&divergence_final,1,MPI_UNSIGNED,MPI_SUM,k,MPI_COMM_WORLD);
+		MPI_Reduce(&divergence_local,&divergence_global,1,MPI_UNSIGNED,MPI_SUM,k,MPI_COMM_WORLD);
 		}
 	
-	// update to element_final
+	// update to element_global
 	for (k=0; k<node_count; k++){
 		for (j=1; j<=PARTITION_HEIGHT; j++){
 			// send
@@ -227,7 +227,7 @@ while(divergence_final && (step<STEP_MAX)){
 			if (node_rank==0){
 				MPI_Recv(buffer_recv,PARTITION_WIDTH,MPI_DOUBLE,k,3,MPI_COMM_WORLD,&status);
 				// this need some serious revamp
-				memcpy(&(element_final[k/NUM_WIDTH*PARTITION_HEIGHT+j-1][(k%NUM_WIDTH)*PARTITION_WIDTH]),\
+				memcpy(&(element_global[k/NUM_WIDTH*PARTITION_HEIGHT+j-1][(k%NUM_WIDTH)*PARTITION_WIDTH]),\
 					buffer_recv,sizeof(double)*PARTITION_WIDTH);
 				}	
 			}
@@ -246,12 +246,12 @@ if (node_rank==0){
 		
 		//~ for (j=0; j<PARTITION_HEIGHT; j++){
 		//~ for (i=0; i<PARTITION_WIDTH*2; i++){
-			//~ printf("%f\t",element_final[j][i]);
+			//~ printf("%f\t",element_global[j][i]);
 			//~ }
 			//~ printf("\n");
 		//~ }
 	}
 
-MPI_Finalize();
+MPI_globalize();
 return(0);
 }
