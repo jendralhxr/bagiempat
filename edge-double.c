@@ -33,7 +33,7 @@ int main(int argc, char *argv[]){
 	
 	element_local = malloc(sizeof(double*)*(PARTITION_HEIGHT));
 	for (j=0; j<PARTITION_HEIGHT; j++){
-		element_local[j] = malloc(sizeof(double)*(PARTITION_WIDTH+1));
+		element_local[j] = malloc(sizeof(double)*(PARTITION_WIDTH));
 		}
 	
 	element_global = malloc(sizeof(double*)*PARTITION_HEIGHT);
@@ -75,7 +75,7 @@ switch(node_rank){
 		element_local[PARTITION_HEIGHT-1][i]= BOUNDARY_BOTTOM;
 		}
 	for (j=0; j<PARTITION_HEIGHT; j++){
-		element_local[j][PARTITION_WIDTH]= BOUNDARY_RIGHT;
+		element_local[j][PARTITION_WIDTH-1]= BOUNDARY_RIGHT;
 		}
 	break;
 	default:
