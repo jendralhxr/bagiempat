@@ -134,7 +134,7 @@ while(divergence_global && (step<STEP_MAX)){
 				memcpy(buffer_send_bottom,&(element_global[(k/NUM_WIDTH+1)*PARTITION_HEIGHT+1][k%NUM_WIDTH*PARTITION_WIDTH]),sizeof(double)*(PARTITION_WIDTH+2));
 				}
 			
-			// send all 4 sides, tag is a*10 + side_id
+			// send all 4 sides, tag is a*100 + side_id
 			// left
 			if (!(k%NUM_WIDTH==0)) MPI_Send(buffer_send_left,PARTITION_HEIGHT+2,MPI_DOUBLE,k,100*k+0,MPI_COMM_WORLD);
 			// top
@@ -158,13 +158,13 @@ while(divergence_global && (step<STEP_MAX)){
 				memcpy(&(element_local[0][0]),buffer_recv_top,sizeof(double)*PARTITION_WIDTH+2);
 				} 
 			if (side_flag[2]){
-				MPI_Recv(buffer_recv_right,PARTITION_HEIGHT,MPI_DOUBLE,0,100*k+2,MPI_COMM_WORLD,&status);
+				MPI_Recv(buffer_recv_right,PARTITION_HEIGHT+2,MPI_DOUBLE,0,100*k+2,MPI_COMM_WORLD,&status);
 				for (j=0; j<PARTITION_HEIGHT+2; j++){
 					element_local[j][PARTITION_WIDTH+1]= buffer_recv_right[j];
 					}
 				} 
 			if (side_flag[3]){
-				MPI_Recv(buffer_recv_bottom,PARTITION_HEIGHT,MPI_DOUBLE,0,100*k+3,MPI_COMM_WORLD,&status);
+				MPI_Recv(buffer_recv_bottom,PARTITION_WIDTH+2,MPI_DOUBLE,0,100*k+3,MPI_COMM_WORLD,&status);
 				memcpy(&(element_local[PARTITION_WIDTH+1][0]),buffer_recv_bottom,sizeof(double)*PARTITION_WIDTH+2);
 				} 
 			}
